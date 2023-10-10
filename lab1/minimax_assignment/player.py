@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import random
+import math
+
 
 from fishing_game_core.game_tree import Node
 from fishing_game_core.player_utils import PlayerController
@@ -28,6 +29,7 @@ class PlayerControllerMinimax(PlayerController):
 
     def __init__(self):
         super(PlayerControllerMinimax, self).__init__()
+        self.start_time = None
 
     def player_loop(self):
         """
@@ -40,17 +42,15 @@ class PlayerControllerMinimax(PlayerController):
 
         while True:
             msg = self.receiver()
-
+            self.start_time = time()
             # Create the root node of the game tree
             node = Node(message=msg, player=0)
-           # node.state.get_player()
-            # Possible next moves: "stay", "left", "right", "up", "down"
-            best_move = self.search_best_next_move(initial_tree_node=node, depth=0)
-            # Execute next action
 
+            _, best_move = self.search_best_next_move(initial_tree_node=node, depth=6, alpha=-999999, beta=999999, player=0)
+            # Execute next action
             self.sender({"action": ACTION_TO_STR[best_move], "search_time": None})
 
-    def search_best_next_move(self, initial_tree_node,depth):
+    def search_best_next_move(self, initial_tree_node, depth, alpha, beta, player):
         """
         Use minimax (and extensions) to find best possible next move for player 0 (green boat)
         :param initial_tree_node: Initial game tree node
@@ -64,30 +64,60 @@ class PlayerControllerMinimax(PlayerController):
 
         # NOTE: Don't forget to initialize the children of the current node
         #       with its compute_and_get_children() method!
+
         children = initial_tree_node.compute_and_get_children()
-        if children == [] or depth == 2:
-            v = initial_tree_node.state.get_player_scores()
-            #return p1, p2
-            return initial_tree_node.move
-        
-        else:
-            depth += 1
-            if initial_tree_node.state.get_player() == 0:
-                bestPossible = -999
-                for child in children:
-                    v = self.search_best_next_move(child, depth)
-                    print(v)
-                    bestPossible = max(bestPossible, v)
-                return bestPossible
-            else:
-                bestPossible = 999
-                for child in children:
-                    v = self.search_best_next_move(child, depth)
 
-                    bestPossible = min(bestPossible, v)
-                return bestPossible
+        if len(children) == 0 or depth == 0 or time() - self.start_time >= 0.06:
+            v = self.heuristic(initial_tree_node)
+            return v, initial_tree_node.move
+        elif player == 0:
+            v = -999
+            action = 0
+            for child in children:
+                child_score, child_action = self.search_best_next_move(child, depth - 1, alpha, beta, 1)
+                if child_score > v:
+                    v = child_score
+                    action = child_action
+                alpha = max(alpha, child_score)
+                if beta <= alpha:
+                    break
+            return v, action
+        else: # player == 1
+            v = 999
+            action = 0
+            for child in children:
+                child_score, child_action = self.search_best_next_move(child, depth - 1, alpha, beta, 0)
+                if child_score < v:
+                    v = child_score
+                    action = child_action
+                beta = min(beta, child_score)
+                if beta <= alpha:
+                    break
+            return v, action
 
+    def heuristic(self, curr_node):
+        p0_fish_caught = curr_node.state.get_caught()[0]
+        current_score_diff = curr_node.state.get_player_scores()[0] - curr_node.state.get_player_scores()[1]
+        # if player 0 caught a fish in this state
+        if p0_fish_caught:
+            return current_score_diff + p0_fish_caught
+        else: # if not caught calculate the value of this state f(n) = g(n) + h(n)
+            return current_score_diff + self.distance_value(curr_node, 0) - self.distance_value(curr_node,1)
 
-        #random_move = random.randrange(5)
+    def distance_value(self, curr_node, player):
+        hook_pos = curr_node.state.get_hook_positions()
+        fish_pos = curr_node.state.get_fish_positions()
+        fish_scores = curr_node.state.get_fish_scores()
 
-       # return ACTION_TO_STR[random_move]
+        best_fish_score = 0
+        for fish_id, fish_pos in fish_pos.items():
+            # [x/y][player] ==> [0][0] = x coordinate for player 0
+            xDist, yDist = hook_pos[player][0] - fish_pos[0], hook_pos[player][1] - fish_pos[1]
+            euclideanDist = math.sqrt((min(xDist, 20 - xDist))**2 + yDist**2)
+            # calculate new fish score as a function of fish score and the distance to that fish
+            fish_score = fish_scores[fish_id] * (1 / (1 if euclideanDist == 0 else euclideanDist))
+            # maximize the new fish score value
+            best_fish_score = max(fish_score, best_fish_score)
+
+        return best_fish_score
+
