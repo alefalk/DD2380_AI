@@ -1,39 +1,30 @@
 import sys
-# pypy3 MyHMM0.py < test.in
+
+# pypy3 MyHMM1.py < test.in
 
 def vectorMul(A, B, colnum):
     alpha = []
-
     for i in range(len(A)):
-        alpha.append(A[i] * B[i][colnum])
-    print(alpha)
-    return alpha
+        alpha.append(float(A[i]) * float(B[i][colnum]))
+    return [alpha]
 
-def forward(seq, A, B, pi):
-    alpha = vectorMul(pi[0], B, seq[0])
-
-    a = []
-    elem = 0
-    for state in seq:
-        for i in range(len(alpha)):
-            for j in range(len(A[0])):
-                elem += alpha[j] * A[j][i]
-            a.append(elem)
-        alpha = vectorMul(a, B, state)
-   # print(a)
-
-def matrixMultiplication(A, B):
-
+def matrixMultiplication(alpha, A):
+    row, col = len(A), len(A[0])
     result = []
-    for i in range(len(A)):
-        for j in range(len(B[0])):
-            element_val = 0
-            for k in range(len(A[0])):
-                #print(float(A[i][k]))
-                element_val += A[i][k] * B[k][j]
-            result.append(element_val)
-            
-    return result
+    for j in range(col):
+        element_val = 0
+        for k in range(row):
+            element_val += float(alpha[0][k]) * float(A[k][j])
+        result.append(element_val)
+    return [result]
+
+def forward(seq, A, B, alpha):
+    if len(seq) == 0:
+        return alpha
+
+    alpha = matrixMultiplication(alpha, A) #2d
+    alpha = vectorMul(alpha[0], B, seq[0]) #1d
+    return forward(seq[1:], A, B, alpha)
 
 pi = []
 A = []
@@ -46,20 +37,20 @@ for line in sys.stdin:
         num_elem = int(line[0])
         for i in range(num_elem):
             seq.append(int(line[i+1]))
-    row, col = int(line[0]), int(line[1])
-    for i in range(row):
-        rowelem = []
-        for j in range(col):
-            rowelem.append(float(line[i*col + j + 2]))
-        if linecount==0:
-            B.append(rowelem)
-        if linecount==1:
-            A.append(rowelem)
-        if linecount==2:
-            pi.append(rowelem)
+
+    N, K = int(line[0]), int(line[1])
+    if linecount==0:
+        for i in range(N):
+            A.append(line[i*N + 2:i*N+N+2])
+    if linecount==1:
+        for i in range(N):
+            B.append(line[i*K + 2:(i+1)*K+2])
+
+    if linecount==2:
+        pi.append(line[2:K+2])
     linecount+=1
 
-forward(seq, A, B, pi)
-
-
-    
+alpha_init = vectorMul(pi[0], B, seq[0])
+probability = forward(seq[1:], A, B, alpha_init)
+summa = sum(probability[0])
+print(summa)
