@@ -2,6 +2,7 @@ import sys
 
 # pypy3 MyHMM1.py < test.in
 
+
 def vectorMul(A, B, colnum):
     alpha = []
     for i in range(len(A)):
