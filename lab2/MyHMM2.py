@@ -1,54 +1,39 @@
 import sys
 
-# pypy3 MyHMM2.py < test.in
+def viterbi(seq, A, B, pi):
+    T = len(seq)
+    N = len(A)
+    delta = [[0] * N for _ in range(T)]
+    delta_idx = [[0] * N for _ in range(T)]
 
-def vectorMul(A, B, colnum):
-    alpha = []
-    maxindex=0
-    value = 0
-    for i in range(len(A)):
-        val = float(A[i]) * float(B[i][colnum])
-        alpha.append(val)
-        if val > value:
-            value = val
-            maxindex = i
-   # print("at index: ", maxindex, "val is: ",value)
-   # print(alpha)
+    # initalize for first state in sequence. δ1(i) = bi(o1)πi
+    for i in range(N):
+        delta[0][i] = float(pi[0][i]) * float(B[i][seq[0]])
 
-    return [alpha], maxindex
+    # Forward pass δt(i) = maxj∈[1,..N] a[j,i]*δt−1(j)bi(ot).
+    for t in range(1, T):
+        for i in range(N):
+            max_value = float('-inf')
+            max_j = -1
+            for j in range(N):
+                value = delta[t - 1][j] * float(A[j][i]) * float(B[i][seq[t]])
+                if value > max_value:
+                    max_value = value
+                    max_j = j
+            delta[t][i] = max_value
+            delta_idx[t][i] = max_j
+  
+    # When arriving at the end of the observation sequence, T , the probability of the most likely hidden
+    # state sequence is given by maxj∈[1,..N] δT
+    x_T = delta[T - 1].index(max(delta[T - 1]))
+    x_t = [x_T]
+    # Backward pass to find the most likely path
+    for t in range(T - 1, 0, -1):
+        t_plus_one = x_t[0]
+        x_t.insert(0, delta_idx[t][t_plus_one])
+  
+    return x_t
 
-def vectorMulViterbi(delta, A, B, colnum):
-    
-    max_prob_vector = []
-    maxindex = 0
-    value = 0
-
-    for i in range(len(delta)):
-        prob_vector = []
-        for j in range(len(A)):
-            val = float(delta[j]) * float(A[j][i]) * float(B[i][colnum])
-           # print("row:", i, "delta: ", float(delta[j]), "A[i][j]:", float(A[j][i]), "B[j][col]: ", float(B[i][colnum]), "mult: ",val )
-
-            prob_vector.append(val)
-        max_prob_vector.append(max(prob_vector))
-        
-        if max(prob_vector) > value :
-            value = max(prob_vector)
-            maxindex = i
-  #  print("at index: ", maxindex, "val is: ",value)
-   # print(max_prob_vector)
-    return [max_prob_vector], maxindex  
-
-def viterbi(seq, A, B, delta):
-    #print(seq)
-    if len(seq) == 0 :
-        return most_likely
-    max_prob_vector, maxindex = vectorMulViterbi(delta[0], A, B, seq[0])
-    #print(max_prob_vector)
-    most_likely.append(maxindex)
-    return viterbi(seq[1:], A , B, max_prob_vector)
-
-most_likely=[]
 pi = []
 A = []
 B = []
@@ -72,7 +57,6 @@ for line in sys.stdin:
     if linecount==2:
         pi.append(line[2:K+2])
     linecount+=1
-delta_init, maxindex = vectorMul(pi[0], B, seq[0])
-most_likely.append(maxindex)
-h = viterbi(seq[1:], A, B, delta_init)
-print(' '.join(map(str, h)))
+
+most_likely = viterbi(seq, A, B, pi)
+print(' '.join(map(str, most_likely)))
