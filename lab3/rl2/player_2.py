@@ -215,7 +215,6 @@ class PlayerControllerRL(PlayerController, FishesModelling):
                 s_next_tuple = msg["state"]
                 end_episode = msg["end_episode"]
                 s_next = self.ind2state[s_next_tuple]
-
                 # ADD YOUR CODE SNIPPET BETWEEN EX. 2.2
                 # Implement the Bellman Update equation to update Q
                 # new state = old state + alpha*(Reward (R) + gamma * max(next state) - old state))
