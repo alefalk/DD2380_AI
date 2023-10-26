@@ -61,20 +61,20 @@ fact6(Ls) :-
 fact7(Ls) :-
 %   fill here
     member(p(_,_,dota2,house,unemployed), Ls).
-fact8(Ls) :- %F8- The person who loves winter does not live in a house and is a student;
+fact8(Ls) :-
     member(p(_, winter, _, X, Y), Ls),
     not(X == house),
     Y = student.
 fact9(Ls) :- 
 %   fill here
     neighbours(p2, p4, Ls).
-fact10(Ls) :- %F10- The person who loves summer is a neighbor of p2, but not of p1;
+fact10(Ls) :-
 %   fill here
     member(p(P,summer,_,_,_), Ls),
     neighbours(P, p2, Ls),
     not(neighbours(P,p1,Ls)).
 
-fact11(Ls) :-  % F11- A neighbor of p3 plays tennis;
+fact11(Ls) :-
 %   fill here
     neighbours(P,p3, Ls),
     member(p(P,_,tennis,_,_), Ls).
